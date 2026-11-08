@@ -1,0 +1,19 @@
+// GPSNavigation: вход в здание (маркер типа ENTRANCE) — фонарь с голубым свечением.
+String id = "gps_entrance";
+String viewers = "owner";
+int keyframeTicks = 20;
+
+dyn render = {
+    type: "ITEM",
+    item: "SOUL_LANTERN",
+    billboard: "CENTER",
+    brightness: 15,
+    glow: true,
+    glowColor: "#55e6ff",
+};
+
+dyn emitter = { shape: "POINT", count: 1 };
+
+dyn motion = { lifetime: 1200, speed: 0 };
+
+dyn animation = { scale: 0.6, fadeIn: 6, spin: 2 };

@@ -1,0 +1,61 @@
+name: GPSNavigation
+version: '${version}'
+main: com.gpsnavigation.GPSNavigation
+api-version: '1.21'
+description: GPS-навигация к NPC по дорожной сети с мёртвыми зонами
+authors: [pavelkucan]
+softdepend: [DisplayLib]
+
+commands:
+  gps:
+    description: GPS-навигатор (альтернатива путеводителю)
+    usage: /gps [give|start <npc>|stop|status|reload]
+  road:
+    description: Управление дорожной сетью
+    usage: /road <wand|show|info|remove|link|unlink|type|list>
+  gpszone:
+    description: Управление мёртвыми зонами
+    usage: /gpszone <wand|show|list|here|info|remove|link|unlink>
+  gpsnpc:
+    description: Управление NPC навигации
+    usage: /gpsnpc <create|remove|move|rename|desc|icon|relink|list|info>
+  gpsmap:
+    description: Управление картами местности
+    usage: /gpsmap <create|remove|list|select|rename|desc|icon>
+
+permissions:
+  gps.use:
+    description: Использование GPS-навигатора
+    default: true
+  gps.give:
+    description: Выдача GPS-путеводителя
+    default: op
+  gps.admin.road:
+    description: Создание и удаление дорог
+    default: op
+  gps.admin.zone:
+    description: Управление мёртвыми зонами
+    default: op
+  gps.admin.npc:
+    description: Управление NPC
+    default: op
+  gps.admin.map:
+    description: Управление картами
+    default: op
+  gps.admin.debug:
+    description: Просмотр маркеров и ID
+    default: op
+  gps.admin.reload:
+    description: Перезагрузка конфигурации
+    default: op
+  gps.admin.*:
+    description: Все административные права GPS
+    default: op
+    children:
+      gps.give: true
+      gps.admin.road: true
+      gps.admin.zone: true
+      gps.admin.npc: true
+      gps.admin.map: true
+      gps.admin.debug: true
+      gps.admin.reload: true

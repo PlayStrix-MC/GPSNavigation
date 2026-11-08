@@ -1,0 +1,21 @@
+// GPSNavigation: узел маршрута — светящееся Око Края медленно вращается и указывает путь.
+// Видит только игрок с маршрутом (viewers = "owner"). Это display-сущность пакетами, не обычная частица:
+// видна даже с отключёнными частицами. Можно править — /displaylib reload.
+String id = "gps_pointer";
+String viewers = "owner";
+int keyframeTicks = 20;
+
+dyn render = {
+    type: "ITEM",
+    item: "ENDER_EYE",
+    billboard: "CENTER",
+    brightness: 15,
+    glow: true,
+    glowColor: "#3dff8a",
+};
+
+dyn emitter = { shape: "POINT", count: 1 };
+
+dyn motion = { lifetime: 1200, speed: 0 };
+
+dyn animation = { scale: 0.42, fadeIn: 6, spin: 3 };

@@ -1,0 +1,16 @@
+// GPSNavigation: поток искр от узла к следующему узлу — показывает, куда идти.
+// Направление и скорость плагин подставляет сам для каждого участка маршрута (искра долетает до следующего узла).
+String id = "gps_trail";
+String viewers = "owner";
+int keyframeTicks = 8;
+
+dyn render = { type: "PIXEL", colors: ["#3dff8a", "#9dffc4", "#e6fff0"], brightness: 15 };
+
+dyn emitter = { shape: "SPHERE", radius: 0.06, count: 0, duration: -1, rate: 0.25 };
+
+dyn motion = { lifetime: [15, 17], speed: 0.18, direction: [1, 0, 0], spread: 3 };
+
+dyn animation = {
+    scale: [0.06, 0.09],
+    opacity: [[0, 0], [0.2, 1], [0.8, 1], [1, 0]],
+};

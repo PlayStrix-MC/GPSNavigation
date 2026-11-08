@@ -1,0 +1,23 @@
+// GPSNavigation: цель маршрута — золотая спираль искр поднимается вокруг NPC.
+String id = "gps_target";
+String viewers = "owner";
+int keyframeTicks = 6;
+
+dyn render = { type: "PIXEL", colors: ["#ffd23f", "#ffe680", "#fff6cc"], brightness: 15 };
+
+dyn emitter = { shape: "CIRCLE", radius: 0.75, surface: true, count: 0, duration: -1, rate: 0.6 };
+
+dyn motion = {
+    lifetime: [30, 40],
+    speed: 0.06,
+    direction: [0, 1, 0],
+    spread: 8,
+    attract: 0.002,
+    attractAxis: "Y",
+};
+
+dyn animation = {
+    scale: [0.07, 0.11],
+    endScale: 0.3,
+    opacity: [[0, 0], [0.15, 1], [0.7, 1], [1, 0]],
+};

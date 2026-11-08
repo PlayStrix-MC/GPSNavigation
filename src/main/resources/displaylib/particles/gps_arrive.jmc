@@ -1,0 +1,25 @@
+// GPSNavigation: прибытие к NPC — праздничный всплеск звёзд.
+String id = "gps_arrive";
+String viewers = "owner";
+int keyframeTicks = 3;
+
+dyn render = {
+    type: "TEXT",
+    variants: ["★", "✦", "✧"],
+    colors: ["#3dff8a", "#ffd23f", "#ffffff", "#9dffc4"],
+    billboard: "CENTER",
+    brightness: 15,
+};
+
+dyn emitter = { shape: "SPHERE", radius: 0.2, count: 28 };
+
+dyn motion = {
+    lifetime: [22, 34],
+    speed: [0.12, 0.22],
+    direction: [0, 1, 0],
+    spread: 70,
+    gravity: 0.012,
+    drag: 0.06,
+};
+
+dyn animation = { scale: [0.5, 0.8], endScale: 0, easing: "EASE_IN", fadeIn: 2, rotation: [0, 360], spin: [-15, 15] };
