@@ -32,6 +32,8 @@ import java.util.function.ToDoubleFunction;
  *       не пересекающая ни одну мёртвую зону; стоимость = длина × штраф бездорожья;</li>
  *   <li>по дороге (маркер → соседний маркер) — связь, не проходящая через мёртвую зону; стоимость = длина.</li>
  * </ul>
+ * Если задан {@link Walker}, участок по бездорожью допускается, только если по нему можно пройти ногами
+ * (без стен и обрывов), а выход на маркер — если дошли до его высоты.
  * Сойти с дороги обратно на бездорожье нельзя. Так A* одним поиском выбирает сторону обхода зоны,
  * точку входа на дорогу и путь по дороге — с наименьшей общей стоимостью.
  */
@@ -40,6 +42,11 @@ public final class RoutePlanner {
     private static final double OFFSET = 1.5;
     private static final int MAX_CONTOUR_NODES = 800;
     private static final int FAR_CANDIDATES = 24;
+
+    /** Проход по прямой по рельефу: высота в конце пути или NaN, если пройти нельзя. */
+    public interface Walker {
+        double walk(double ax, double ay, double az, double bx, double bz);
+    }
 
     /** Результат: точки бездорожья (без старта) и маркеры дороги по порядку. */
     public static final class Result {
@@ -62,6 +69,8 @@ public final class RoutePlanner {
     private final double sz;
     private final double penalty;
     private final ToDoubleFunction<RoadMarker> directExtra;
+    private final Walker walker;
+    private final double startY;
     private final List<double[]> contour = new ArrayList<>();
     private final List<RoadMarker> entries = new ArrayList<>();
 
@@ -70,7 +79,7 @@ public final class RoutePlanner {
      */
     public RoutePlanner(RoadNetwork network, ZoneManager zones, String mapId, String world,
                         double sx, double sy, double sz, double startRadius, double offroadPenalty,
-                        ToDoubleFunction<RoadMarker> directExtra) {
+                        ToDoubleFunction<RoadMarker> directExtra, double startY, Walker walker) {
         this.network = network;
         this.zoneManager = zones;
         this.mapId = mapId;
@@ -80,6 +89,8 @@ public final class RoutePlanner {
         this.sz = sz;
         this.penalty = offroadPenalty;
         this.directExtra = directExtra;
+        this.startY = startY;
+        this.walker = walker;
         boolean inside = false;
         List<DeadZone> all = zones.ofMap(mapId);
         for (DeadZone z : all) {
@@ -188,6 +199,7 @@ public final class RoutePlanner {
 
         Map<String, Double> g = new HashMap<>();
         Map<String, String> parent = new HashMap<>();
+        Map<String, Double> nodeY = new HashMap<>();
         Set<String> closed = new HashSet<>();
         PriorityQueue<Node> open = new PriorityQueue<>();
         g.put("S", 0.0);
@@ -200,8 +212,8 @@ public final class RoutePlanner {
 
             if (node.key.equals("S") || node.key.charAt(0) == 'C') {
                 double[] from = node.key.equals("S") ? new double[]{sx, sz} : contour.get(Integer.parseInt(node.key.substring(1)));
-                double fromY = sy;
                 boolean isStart = node.key.equals("S");
+                double fromY = isStart ? startY : nodeY.getOrDefault(node.key, startY);
                 // Бездорожье → узлы обхода
                 for (int i = 0; i < contour.size(); i++) {
                     String k = "C" + i;
@@ -211,6 +223,12 @@ public final class RoutePlanner {
                     double ng = base + d * penalty;
                     if (ng >= g.getOrDefault(k, Double.POSITIVE_INFINITY)) continue;
                     if (!clear(from[0], from[1], c[0], c[1])) continue;
+                    double ey = fromY;
+                    if (walker != null) {
+                        ey = walker.walk(from[0], fromY, from[1], c[0], c[1]);
+                        if (Double.isNaN(ey)) continue;
+                    }
+                    nodeY.put(k, ey);
                     g.put(k, ng);
                     parent.put(k, node.key);
                     open.add(new Node(k, ng + h(c[0], fromY, c[1], goal)));
@@ -225,6 +243,10 @@ public final class RoutePlanner {
                     double ng = base + d * penalty * extra;
                     if (ng >= g.getOrDefault(k, Double.POSITIVE_INFINITY)) continue;
                     if (!clear(from[0], from[1], m.cx(), m.cz())) continue;
+                    if (walker != null) {
+                        double ey = walker.walk(from[0], fromY, from[1], m.cx(), m.cz());
+                        if (Double.isNaN(ey) || Math.abs(ey - m.y()) > 1.5) continue;
+                    }
                     g.put(k, ng);
                     parent.put(k, node.key);
                     open.add(new Node(k, ng + m.distance(goal)));

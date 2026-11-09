@@ -15,9 +15,6 @@
 Зависимости (compileOnly):
 - `io.papermc.paper:paper-api:1.21.11-R0.1-SNAPSHOT` из `repo.papermc.io`;
 - DisplayLib — положите его jar в папку `libs/` (в репозиторий не входит). На сервере DisplayLib необязателен: без него плагин работает с пакетными указателями и меню-инвентарём.
-
-Вёрстка экрана меню (`src/main/resources/displaylib/screens/gps_navigator.jmc`) генерируется скриптом `tools/gen_screen.py`
-(запуск из корня проекта: `python tools/gen_screen.py`).
 Для офлайн-проверки компиляции можно подставить свой jar API: `gradlew build -PlocalApiJar=путь/к/api.jar`.
 
 ## Быстрый старт администратора
@@ -76,7 +73,7 @@
 
 ```
 /gps [start <npc>|stop|status|give [игрок]|reload]
-/road wand|show|info [id]|remove <id>|link <a> <b>|unlink <a> <b>|type <id> <ROAD|ENTRANCE>|list [карта]
+/road wand|show|info [id]|remove <id>|link <a> <b>|unlink <a> <b>|list [карта]
 /gpszone wand|show|list [карта]|here|info [id]|remove <id>|link <a> <b>|unlink <a> <b>
 /gpsnpc create <id> <карта> [имя]|remove <id>|move <id>|rename <id> <имя>|desc <id> <текст|clear>|icon <id> <предмет>|relink <id>|list [карта]|info <id>
 /gpsmap create <id> [имя]|select <id>|list|remove <id> confirm|rename|desc|icon <id> <значение>
@@ -95,8 +92,8 @@
 ### С DisplayLib (рекомендуется)
 Если на сервере установлен [DisplayLib](https://github.com/Pa-dej/DisplayLib/releases) (Paper 1.21.11), маршрут рисуется «тропой Ока Края»:
 - в узлах маршрута (каждые 3 блока, до 17 блоков вперёд) — светящееся зелёным Око Края, медленно вращается;
+  узлы стоят невысоко над землёй и идут по рельефу (склоны, ступеньки), не уходя в блоки;
 - от каждого узла к следующему бежит поток зелёных искр — видно направление;
-- у входов в здания (маркер ENTRANCE) — фонарь душ с голубым свечением;
 - вокруг целевого NPC поднимается золотая спираль, сама сущность NPC светится контуром;
 - по прибытии — всплеск звёзд.
 

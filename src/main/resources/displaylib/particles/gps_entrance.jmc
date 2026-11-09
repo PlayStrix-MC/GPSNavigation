@@ -1,4 +1,4 @@
-// GPSNavigation: вход в здание (маркер типа ENTRANCE) — фонарь с голубым свечением.
+// GPSNavigation: выделенный указатель (над NPC, если его сущность не найдена) — фонарь с голубым свечением.
 String id = "gps_entrance";
 String viewers = "owner";
 int keyframeTicks = 20;

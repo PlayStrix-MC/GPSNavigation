@@ -1,6 +1,5 @@
 package com.gpsnavigation.data;
 
-import com.gpsnavigation.model.MarkerType;
 import com.gpsnavigation.model.RoadMarker;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.YamlConfiguration;
@@ -217,11 +216,7 @@ public final class RoadNetwork extends DataStore {
                 }
                 RoadMarker m = new RoadMarker(uuid, number, MapManager.normalize(s.getString("map", "default")),
                         s.getString("world", "world"), s.getInt("x"), s.getInt("y"), s.getInt("z"));
-                try {
-                    m.type(MarkerType.valueOf(s.getString("type", "ROAD").toUpperCase(Locale.ROOT)));
-                } catch (IllegalArgumentException e) {
-                    m.type(MarkerType.ROAD);
-                }
+                if (s.get("type") != null) markDirty(); // тип маркера (ROAD/ENTRANCE) больше не используется — уберётся при сохранении
                 ConfigurationSection settings = s.getConfigurationSection("settings");
                 if (settings != null) m.settings().putAll(settings.getValues(false));
                 markers.put(uuid, m);
@@ -259,7 +254,6 @@ public final class RoadNetwork extends DataStore {
             s.set("x", m.x());
             s.set("y", m.y());
             s.set("z", m.z());
-            s.set("type", m.type().name());
             List<String> n = new ArrayList<>();
             for (Iterator<UUID> it = m.neighbors().iterator(); it.hasNext(); ) {
                 n.add(it.next().toString());

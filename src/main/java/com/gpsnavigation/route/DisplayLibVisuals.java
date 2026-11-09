@@ -23,10 +23,11 @@ public final class DisplayLibVisuals {
 
     public static final String POINTER = "gps_pointer";
     public static final String TRAIL = "gps_trail";
-    public static final String ENTRANCE = "gps_entrance";
+    /** Выделенный указатель (над NPC, если его сущность не найдена). */
+    public static final String HIGHLIGHT = "gps_entrance";
     public static final String TARGET = "gps_target";
     public static final String ARRIVE = "gps_arrive";
-    private static final String[] EFFECTS = {POINTER, TRAIL, ENTRANCE, TARGET, ARRIVE};
+    private static final String[] EFFECTS = {POINTER, TRAIL, HIGHLIGHT, TARGET, ARRIVE};
 
     private final GPSNavigation plugin;
 
@@ -91,7 +92,7 @@ public final class DisplayLibVisuals {
      */
     public PointerHandle pointer(Player viewer, Location at, boolean entrance, Vector next) {
         List<ParticleEmission> parts = new ArrayList<>();
-        ParticleEmission orb = Particles.play(entrance ? ENTRANCE : POINTER, at, viewer);
+        ParticleEmission orb = Particles.play(entrance ? HIGHLIGHT : POINTER, at, viewer);
         if (orb == null) return null;
         parts.add(orb);
         if (next != null && plugin.settings().displayLibTrail) {

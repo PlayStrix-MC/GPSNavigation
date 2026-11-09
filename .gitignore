@@ -33,6 +33,9 @@ _to_delete/
 Thumbs.db
 desktop.ini
 
+# Рабочие скрипты (генератор вёрстки и т.п.) — не в репозитории
+tools/
+
 # Python
 __pycache__/
 *.pyc

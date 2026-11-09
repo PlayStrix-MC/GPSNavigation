@@ -3,7 +3,6 @@ package com.gpsnavigation.route;
 import com.gpsnavigation.GPSNavigation;
 import com.gpsnavigation.Settings;
 import com.gpsnavigation.model.GpsNpc;
-import com.gpsnavigation.model.MarkerType;
 import com.gpsnavigation.model.RoadMarker;
 import com.gpsnavigation.model.TerrainMap;
 import com.gpsnavigation.util.Msg;
@@ -139,31 +138,27 @@ public final class RouteManager {
             return "Маршрут не найден: дорога к NPC отсутствует или перекрыта мёртвой зоной.";
         }
         List<RoadMarker> path = result.markers;
+        World world = player.getWorld();
+        Terrain terrain = new Terrain(world, POINT_BUDGET);
+        double startY = startY(terrain, loc);
+
+        // Опорные точки: игрок → обход мёртвых зон → маркеры → NPC. Между ними маршрут прорисовывается
+        // по земле через каждый блок, чтобы указатели не висели в воздухе и не уходили в холмы и стены.
         List<Vector> pts = new ArrayList<>();
-        pts.add(loc.toVector());
-        // Бездорожье в обход мёртвых зон: точки ставятся на землю, высота плавно идёт к первому маркеру.
+        Vector cur = new Vector(loc.getX(), startY, loc.getZ());
+        pts.add(cur);
+        for (double[] w : result.offroad) {
+            cur = offroadLeg(terrain, pts, cur, w[0], w[1]);
+        }
         RoadMarker first = path.get(0);
-        double total = 0;
-        double px = loc.getX(), pz = loc.getZ();
-        for (double[] w : result.offroad) {
-            total += Math.hypot(w[0] - px, w[1] - pz);
-            px = w[0];
-            pz = w[1];
+        offroadLeg(terrain, pts, cur, first.cx(), first.cz());
+        addPoint(pts, new Vector(first.cx(), first.y(), first.cz()));
+        for (int i = 1; i < path.size(); i++) {
+            RoadMarker m = path.get(i);
+            roadLeg(terrain, pts, new Vector(m.cx(), m.y(), m.cz()));
         }
-        total += Math.hypot(first.cx() - px, first.cz() - pz);
-        double walked = 0;
-        px = loc.getX();
-        pz = loc.getZ();
-        for (double[] w : result.offroad) {
-            walked += Math.hypot(w[0] - px, w[1] - pz);
-            px = w[0];
-            pz = w[1];
-            double guess = loc.getY() + (first.y() - loc.getY()) * (total <= 0 ? 0 : walked / total);
-            addPoint(pts, new Vector(w[0], groundY(player.getWorld(), w[0], w[1], guess), w[1]));
-        }
-        for (RoadMarker m : path) addPoint(pts, new Vector(m.cx(), m.y(), m.cz()));
-        addPoint(pts, new Vector(npc.x(), npc.y(), npc.z()));
-        clearVisuals(route);
+        roadLeg(terrain, pts, new Vector(npc.x(), npc.y(), npc.z()));
+        releasePointers(route);
         route.markers = path;
         route.setPoints(pts);
         route.progress = 0;
@@ -180,29 +175,67 @@ public final class RouteManager {
     private com.gpsnavigation.path.RoutePlanner.Result findPath(Player player, ActiveRoute route, RoadMarker goal) {
         Settings s = plugin.settings();
         Location loc = player.getLocation();
-        com.gpsnavigation.path.RoutePlanner planner = new com.gpsnavigation.path.RoutePlanner(
+        Terrain terrain = new Terrain(player.getWorld(), WALK_BUDGET);
+        double startY = startY(terrain, loc);
+        com.gpsnavigation.path.RoutePlanner.Result result = new com.gpsnavigation.path.RoutePlanner(
                 plugin.network(), plugin.zones(), route.mapId, route.world,
                 loc.getX(), loc.getY() + 0.5, loc.getZ(), s.startSearchRadius, s.offroadPenalty,
-                m -> canSee(player, m) ? 1.0 : 1.5);
-        return planner.find(goal);
+                m -> canSee(player, m) ? 1.0 : 1.5, startY, terrain::walk).find(goal);
+        if (result != null) return result;
+        // Ногами по прямой не выйти ни к одному маркеру (например, игрок в закрытой постройке) —
+        // строим как раньше, без проверки рельефа, чтобы GPS всё равно показал направление.
+        return new com.gpsnavigation.path.RoutePlanner(
+                plugin.network(), plugin.zones(), route.mapId, route.world,
+                loc.getX(), loc.getY() + 0.5, loc.getZ(), s.startSearchRadius, s.offroadPenalty,
+                m -> canSee(player, m) ? 1.0 : 1.5, startY, null).find(goal);
     }
 
-    /** Высота земли рядом с ожидаемой: первый блок с опорой и двумя блоками воздуха над ним. */
-    private double groundY(World w, double x, double z, double guess) {
-        int bx = (int) Math.floor(x), bz = (int) Math.floor(z);
-        if (!w.isChunkLoaded(bx >> 4, bz >> 4)) return guess;
-        int g = (int) Math.floor(guess);
-        for (int d = 0; d <= 8; d++) {
-            for (int sign : new int[]{1, -1}) {
-                int yy = g + d * sign;
-                if (yy <= w.getMinHeight() || yy >= w.getMaxHeight() - 2) continue;
-                if (w.getBlockAt(bx, yy - 1, bz).getType().isSolid()
-                        && !w.getBlockAt(bx, yy, bz).getType().isSolid()
-                        && !w.getBlockAt(bx, yy + 1, bz).getType().isSolid()) return yy;
-                if (d == 0) break;
-            }
+    /** Сколько столбцов блоков можно прочитать при проверке проходимости в A* и при прорисовке точек. */
+    private static final int WALK_BUDGET = 60_000;
+    private static final int POINT_BUDGET = 20_000;
+
+    /** Высота ног игрока на земле: если он в воздухе или в воде — ближайшая земля под ним. */
+    private static double startY(Terrain t, Location loc) {
+        double y = t.snap(loc.getX(), loc.getZ(), Math.floor(loc.getY() + 0.01), 16, 1);
+        return Double.isNaN(y) ? loc.getY() : y;
+    }
+
+    /** Участок по бездорожью: шаги по 1 блоку по земле (подъём до 1, спуск до 3 блоков за шаг). */
+    private static Vector offroadLeg(Terrain t, List<Vector> pts, Vector from, double bx, double bz) {
+        double len = Math.hypot(bx - from.getX(), bz - from.getZ());
+        int steps = (int) Math.ceil(len);
+        double y = from.getY();
+        Vector p = from;
+        for (int i = 1; i <= steps; i++) {
+            double k = (double) i / steps;
+            double x = from.getX() + (bx - from.getX()) * k;
+            double z = from.getZ() + (bz - from.getZ()) * k;
+            double ny = t.snap(x, z, y, Terrain.STEP_DOWN, Terrain.STEP_UP);
+            if (Double.isNaN(ny)) ny = t.ground(x, z, y);
+            if (!Double.isNaN(ny)) y = ny;
+            p = new Vector(x, y, z);
+            addPoint(pts, p);
         }
-        return guess;
+        return p;
+    }
+
+    /**
+     * Участок дороги между маркерами: прямая между ними, но каждая точка ставится на землю ({@link Terrain#ground}):
+     * сквозь холм — на его поверхность, над низиной — вниз до 2 блоков; мосты и лестницы остаются на месте.
+     */
+    private static void roadLeg(Terrain t, List<Vector> pts, Vector to) {
+        Vector from = pts.get(pts.size() - 1);
+        double len = Math.hypot(to.getX() - from.getX(), to.getZ() - from.getZ());
+        int steps = (int) Math.ceil(len);
+        for (int i = 1; i < steps; i++) {
+            double k = (double) i / steps;
+            double x = from.getX() + (to.getX() - from.getX()) * k;
+            double z = from.getZ() + (to.getZ() - from.getZ()) * k;
+            double guess = from.getY() + (to.getY() - from.getY()) * k;
+            double y = t.ground(x, z, guess);
+            addPoint(pts, new Vector(x, Double.isNaN(y) ? guess : y, z));
+        }
+        addPoint(pts, to);
     }
 
     /** Видит ли игрок маркер (нет твёрдых блоков между глазами и точкой над маркером). */
@@ -303,50 +336,51 @@ public final class RouteManager {
         int kStart = (int) Math.floor(r.progress / sp) + 1;
         int kEnd = (int) Math.floor(Math.min(r.progress + s.pointerMaxDistance, total) / sp);
 
-        // Вход в здание: отдельный светящийся указатель у ближайшего входа впереди.
-        int entranceKey = Integer.MIN_VALUE;
-        double entranceArc = -1;
-        for (int i = 0; i < r.markers.size(); i++) {
-            RoadMarker m = r.markers.get(i);
-            if (m.type() != MarkerType.ENTRANCE) continue;
-            double arc = r.project(new Vector(m.cx(), m.y(), m.cz()))[0];
-            if (arc > r.progress + 0.5 && arc - r.progress <= s.pointerMaxDistance * 2) {
-                entranceKey = -1 - i;
-                entranceArc = arc;
-                break;
-            }
-        }
-
         Iterator<Map.Entry<Integer, PointerHandle>> it = r.pointers.entrySet().iterator();
         while (it.hasNext()) {
             Map.Entry<Integer, PointerHandle> e = it.next();
             int k = e.getKey();
-            boolean keep = k >= 0 ? (k >= kStart && k <= kEnd) : k == entranceKey;
+            boolean keep = k >= kStart && k <= kEnd;
             if (!keep || !e.getValue().isValid()) {
                 e.getValue().remove();
+                r.pointerPos.remove(k);
                 it.remove();
             }
         }
+        Terrain terrain = new Terrain(world, 4096);
         for (int k = Math.max(1, kStart); k <= kEnd; k++) {
             if (r.pointers.containsKey(k)) continue;
             Vector v = r.pointAt(k * sp);
             if (v == null) continue;
-            boolean nearEntrance = entranceArc >= 0 && Math.abs(k * sp - entranceArc) < sp / 2;
+            // Указатель — на pointer.height над настоящей поверхностью (полублок, ступенька, ковёр);
+            // если точка маршрута внутри блоков — переносится в ближайшее свободное место рядом.
+            Vector spot = pointerAt(terrain, v, s.pointerHeight);
             Vector next = r.pointAt(Math.min((k + 1) * sp, total));
-            if (next != null) next.setY(next.getY() + s.pointerHeight);
-            PointerHandle e = plugin.visuals().spawnPointer(player,
-                    new Location(world, v.getX(), v.getY() + s.pointerHeight, v.getZ()), nearEntrance, next);
-            if (e != null) r.pointers.put(k, e);
-        }
-        if (entranceKey != Integer.MIN_VALUE && !r.pointers.containsKey(entranceKey)) {
-            Vector v = r.pointAt(entranceArc);
-            if (v != null) {
-                PointerHandle e = plugin.visuals().spawnPointer(player,
-                        new Location(world, v.getX(), v.getY() + s.pointerHeight + 0.5, v.getZ()), true);
-                if (e != null) r.pointers.put(entranceKey, e);
+            if (next != null) next = pointerAt(terrain, next, s.pointerHeight);
+            PointerHandle e = takeSpare(r, spot);
+            if (e == null) {
+                e = plugin.visuals().spawnPointer(player,
+                        new Location(world, spot.getX(), spot.getY(), spot.getZ()), false, next);
+            }
+            if (e != null) {
+                r.pointers.put(k, e);
+                r.pointerPos.put(k, spot);
             }
         }
+        // Указатели прошлого расчёта, которым не нашлось места в новом маршруте.
+        for (ActiveRoute.Spare sp2 : r.spare) sp2.handle().remove();
+        r.spare.clear();
     }
+
+    /** Центр указателя для точки маршрута: над поверхностью, вне блоков и не впритык к стенкам. */
+    private static Vector pointerAt(Terrain t, Vector routePoint, double height) {
+        Vector spot = t.pointerSpot(routePoint.getX(), routePoint.getY(), routePoint.getZ());
+        spot.setY(spot.getY() + height);
+        return t.awayFromWalls(spot, POINTER_RADIUS);
+    }
+
+    /** Примерный радиус указателя (шар Ока Края / снаряд шалкера) — на столько он держится от стенок. */
+    private static final double POINTER_RADIUS = 0.35;
 
     /**
      * Подсветка цели эффектом свечения (контур), а не частицами — видна даже с отключёнными частицами.
@@ -443,6 +477,9 @@ public final class RouteManager {
         if (r == null) return;
         for (PointerHandle h : r.pointers.values()) h.forget();
         r.pointers.clear();
+        r.pointerPos.clear();
+        for (ActiveRoute.Spare sp : r.spare) sp.handle().forget();
+        r.spare.clear();
         if (r.npcMarker != null) {
             r.npcMarker.forget();
             r.npcMarker = null;
@@ -451,9 +488,41 @@ public final class RouteManager {
         r.lastEntityLookup = 0;
     }
 
+    /** Перед пересчётом: живые указатели откладываются, чтобы новый маршрут мог забрать совпадающие. */
+    private static void releasePointers(ActiveRoute r) {
+        for (ActiveRoute.Spare sp : r.spare) sp.handle().remove();
+        r.spare.clear();
+        for (Map.Entry<Integer, PointerHandle> e : r.pointers.entrySet()) {
+            Vector pos = r.pointerPos.get(e.getKey());
+            if (pos != null && e.getValue().isValid()) r.spare.add(new ActiveRoute.Spare(pos, e.getValue()));
+            else e.getValue().remove();
+        }
+        r.pointers.clear();
+        r.pointerPos.clear();
+    }
+
+    /** Отложенный указатель не дальше 0.6 блока от нужного места (или null). */
+    private static PointerHandle takeSpare(ActiveRoute r, Vector spot) {
+        int best = -1;
+        double bestD = 0.36;
+        for (int i = 0; i < r.spare.size(); i++) {
+            double d = r.spare.get(i).pos().distanceSquared(spot);
+            if (d <= bestD) {
+                bestD = d;
+                best = i;
+            }
+        }
+        if (best < 0) return null;
+        PointerHandle h = r.spare.remove(best).handle();
+        return h.isValid() ? h : null;
+    }
+
     private void clearVisuals(ActiveRoute r) {
         for (PointerHandle h : r.pointers.values()) h.remove();
         r.pointers.clear();
+        r.pointerPos.clear();
+        for (ActiveRoute.Spare sp : r.spare) sp.handle().remove();
+        r.spare.clear();
         stopNpcHighlight(Bukkit.getPlayer(r.playerId), r);
     }
 }

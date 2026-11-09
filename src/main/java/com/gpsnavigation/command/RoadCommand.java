@@ -2,7 +2,6 @@ package com.gpsnavigation.command;
 
 import com.gpsnavigation.GPSNavigation;
 import com.gpsnavigation.core.RoadService;
-import com.gpsnavigation.model.MarkerType;
 import com.gpsnavigation.model.RoadMarker;
 import com.gpsnavigation.model.TerrainMap;
 import com.gpsnavigation.util.Msg;
@@ -98,28 +97,6 @@ public final class RoadCommand extends BaseCommand {
                 }
                 return true;
             }
-            case "type": {
-                if (!perm(sender, "gps.admin.road")) return true;
-                if (args.length < 3) {
-                    Msg.send(sender, "<gray>Использование: <white>/road type <id> <ROAD|ENTRANCE>");
-                    return true;
-                }
-                RoadMarker m = plugin.network().find(args[1]);
-                if (m == null) {
-                    Msg.send(sender, "<red>Маркер не найден.");
-                    return true;
-                }
-                try {
-                    m.type(MarkerType.valueOf(args[2].toUpperCase(Locale.ROOT)));
-                } catch (IllegalArgumentException e) {
-                    Msg.send(sender, "<red>Тип: ROAD или ENTRANCE.");
-                    return true;
-                }
-                plugin.network().markDirty();
-                plugin.roads().changed(m.mapId());
-                Msg.send(sender, "<green>Тип маркера " + m.shortId() + ": <white>" + m.type().name());
-                return true;
-            }
             case "list": {
                 if (!sender.hasPermission("gps.admin.debug") && !perm(sender, "gps.admin.road")) return true;
                 String mapId = args.length >= 2 ? args[1] : null;
@@ -149,8 +126,7 @@ public final class RoadCommand extends BaseCommand {
                 Msg.send(sender, "<gray>/road wand</gray> <dark_gray>—</dark_gray> <white>жезл дорожных маркеров"
                         + "\n<gray>/road show</gray> <dark_gray>—</dark_gray> <white>показать/скрыть сеть"
                         + "\n<gray>/road info [id]</gray> <dark_gray>—</dark_gray> <white>информация о ближайшем маркере"
-                        + "\n<gray>/road remove <id></gray>, <gray>/road link|unlink <id1> <id2></gray>"
-                        + "\n<gray>/road type <id> <ROAD|ENTRANCE></gray>, <gray>/road list [карта]</gray>");
+                        + "\n<gray>/road remove <id></gray>, <gray>/road link|unlink <id1> <id2></gray>, <gray>/road list [карта]</gray>");
                 Player p = sender instanceof Player ? (Player) sender : null;
                 if (p != null) {
                     TerrainMap map = plugin.maps().get(plugin.editors().selectedMapId(p));
@@ -170,17 +146,15 @@ public final class RoadCommand extends BaseCommand {
             "list", p(ROAD, DEBUG),
             "remove", p(ROAD),
             "link", p(ROAD),
-            "unlink", p(ROAD),
-            "type", p(ROAD));
+            "unlink", p(ROAD));
 
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
         if (args.length == 1) return filter(allowed(sender, SUBS), args[0]);
         String sub = args[0].toLowerCase(Locale.ROOT);
         if (!can(sender, SUBS, sub)) return List.of();
-        if (args.length == 2 && List.of("info", "remove", "link", "unlink", "type").contains(sub)) return filter(markerIds(), args[1]);
+        if (args.length == 2 && List.of("info", "remove", "link", "unlink").contains(sub)) return filter(markerIds(), args[1]);
         if (args.length == 3 && (sub.equals("link") || sub.equals("unlink"))) return filter(markerIds(), args[2]);
-        if (args.length == 3 && sub.equals("type")) return filter(List.of("ROAD", "ENTRANCE"), args[2]);
         if (args.length == 2 && sub.equals("list")) return filter(mapIds(), args[1]);
         return List.of();
     }

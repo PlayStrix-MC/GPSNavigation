@@ -40,9 +40,9 @@ public final class DisplayLibMenu implements Listener {
     private static final int PER_PAGE = 6;
     private static final double PX = 1.0 / 40.0;
 
-    /** Общий масштаб меню — тот же K, что в tools/gen_screen.py (вёрстка gps_navigator.jmc). */
+    /** Общий масштаб меню — должен совпадать с масштабом вёрстки gps_navigator.jmc. */
     private static final double K = 0.4;
-    /** Доп. множитель текста — тот же T, что в tools/gen_screen.py. */
+    /** Доп. множитель текста — должен совпадать с вёрсткой gps_navigator.jmc. */
     private static final double T = 1.3;
     // Масштабы из gps_navigator.jmc (нужны для выравнивания и анимаций)
     private static final double NAME_SCALE = 0.5 * K * T;

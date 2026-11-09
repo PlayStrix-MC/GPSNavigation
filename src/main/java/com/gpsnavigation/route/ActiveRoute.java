@@ -25,6 +25,15 @@ public final class ActiveRoute {
 
     /** Указатели по номеру позиции на маршруте (k * шаг): стоят на месте, пока игрок идёт. */
     final Map<Integer, PointerHandle> pointers = new HashMap<>();
+    /** Где стоит каждый указатель (центр). */
+    final Map<Integer, Vector> pointerPos = new HashMap<>();
+    /**
+     * Указатели прошлого расчёта маршрута: после пересчёта указатель, который встаёт в то же место,
+     * берётся отсюда, а не создаётся заново (без мигания). Оставшиеся удаляются.
+     */
+    final List<Spare> spare = new ArrayList<>();
+
+    record Spare(Vector pos, PointerHandle handle) {}
     /** Сущность NPC, которой игрок видит свечение (через пакеты), и время последнего поиска. */
     UUID glowEntity;
     long lastEntityLookup;

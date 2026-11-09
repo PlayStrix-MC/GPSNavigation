@@ -64,8 +64,8 @@ public final class Settings {
         pointerSpacing = Math.max(1, c.getDouble("route.pointerSpacing", 3.0));
         pointerMaxDistance = Math.max(pointerSpacing, c.getDouble("route.pointerMaxDistance", 17.0));
         routeInterval = Math.max(1, c.getInt("route.updateIntervalTicks", 5));
-        recalcDistance = Math.max(2, c.getDouble("route.recalculateDistance", 8.0));
-        recalcCooldownMs = Math.max(0, c.getLong("route.recalculateCooldownMs", 1500));
+        recalcDistance = Math.max(2, c.getDouble("route.recalculateDistance", 3.0));
+        recalcCooldownMs = Math.max(0, c.getLong("route.recalculateCooldownMs", 1000));
         arriveDistance = Math.max(1, c.getDouble("route.arriveDistance", 3.0));
         startSearchRadius = Math.max(linkRadius, c.getDouble("route.startSearchRadius", 48.0));
         offroadPenalty = Math.max(1.0, c.getDouble("route.offroadPenalty", 3.0));
@@ -86,7 +86,7 @@ public final class Settings {
         Material m = Material.matchMaterial(c.getString("pointer.displayItem", "SHULKER_SHELL"));
         pointerItem = m != null && m.isItem() ? m : Material.SHULKER_SHELL;
         pointerGlowing = c.getBoolean("pointer.glowing", true);
-        pointerHeight = c.getDouble("pointer.height", 1.0);
+        pointerHeight = c.getDouble("pointer.height", 0.5);
         npcGlow = c.getBoolean("pointer.npcGlow", true);
         displayLibEnabled = c.getBoolean("displayLib.enabled", true);
         displayLibTrail = c.getBoolean("displayLib.trail", true);

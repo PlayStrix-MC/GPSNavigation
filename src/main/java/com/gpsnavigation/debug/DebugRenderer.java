@@ -6,7 +6,6 @@ import com.gpsnavigation.editor.EditorSessions;
 import com.gpsnavigation.item.SpecialItems;
 import com.gpsnavigation.model.DeadZone;
 import com.gpsnavigation.model.GpsNpc;
-import com.gpsnavigation.model.MarkerType;
 import com.gpsnavigation.model.RoadMarker;
 import com.gpsnavigation.model.ZonePoint;
 import com.gpsnavigation.util.Msg;
@@ -37,7 +36,6 @@ public final class DebugRenderer {
 
     private static final Particle.DustOptions OK = new Particle.DustOptions(Color.LIME, 1.2f);
     private static final Particle.DustOptions ISOLATED = new Particle.DustOptions(Color.RED, 1.5f);
-    private static final Particle.DustOptions ENTRANCE = new Particle.DustOptions(Color.AQUA, 1.5f);
     private static final Particle.DustOptions IN_ZONE = new Particle.DustOptions(Color.PURPLE, 1.5f);
     private static final Particle.DustOptions SELECTED = new Particle.DustOptions(Color.YELLOW, 2.0f);
     private static final Particle.DustOptions LINK = new Particle.DustOptions(Color.fromRGB(80, 220, 80), 0.7f);
@@ -113,8 +111,7 @@ public final class DebugRenderer {
         for (RoadMarker m : nearby) {
             boolean inZone = plugin.zones().isBlocked(m);
             Particle.DustOptions color = inZone ? IN_ZONE
-                    : m.neighbors().isEmpty() ? ISOLATED
-                    : m.type() == MarkerType.ENTRANCE ? ENTRANCE : OK;
+                    : m.neighbors().isEmpty() ? ISOLATED : OK;
             if (sel != null && sel.marker.equals(m.uuid())) color = SELECTED;
             for (int i = 0; i < 3 && budget[0] > 0; i++, budget[0]--) {
                 p.spawnParticle(Particle.DUST, m.cx(), m.y() + 0.3 + i * 0.4, m.cz(), 1, 0, 0, 0, 0, color);
@@ -133,8 +130,7 @@ public final class DebugRenderer {
                 wantedLabels.add(key);
                 String state = inZone ? "<dark_purple>в мёртвой зоне" : m.neighbors().isEmpty() ? "<red>без связей"
                         : "<gray>связей: " + m.neighbors().size();
-                String text = (m.type() == MarkerType.ENTRANCE ? "<aqua>" : "<green>") + "<bold>" + m.shortId()
-                        + "</bold>\n" + state + (m.type() == MarkerType.ENTRANCE ? "\n<aqua>вход" : "");
+                String text = "<green><bold>" + m.shortId() + "</bold>\n" + state;
                 label(p, key, new Location(p.getWorld(), m.cx(), m.y() + 1.4, m.cz()), text);
             }
         }

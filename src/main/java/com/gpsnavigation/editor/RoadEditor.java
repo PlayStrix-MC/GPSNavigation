@@ -192,7 +192,6 @@ public final class RoadEditor {
         sb.append("<green>Маркер <white><bold>").append(m.shortId()).append("</bold></white> <dark_gray>").append(m.uuid()).append("</dark_gray>");
         sb.append("\n<gray>  Координаты: <white>").append(m.coords()).append("</white> <gray>мир <white>").append(Msg.esc(m.world()));
         sb.append("\n<gray>  Карта: <white>").append(map == null ? Msg.esc(m.mapId()) + " <red>(не найдена)" : Msg.esc(map.displayName()) + " <dark_gray>(" + map.id() + ")");
-        sb.append("\n<gray>  Тип: <white>").append(m.type().name());
         sb.append("\n<gray>  Соединений: <white>").append(neighbors.size());
         sb.append("\n<gray>  Соседи: ").append(neighbors.isEmpty() ? "<red>нет" : String.join("<gray>, ", neighbors));
         sb.append("\n<gray>  Привязанные NPC: <white>").append(npcs.isEmpty() ? "нет" : String.join("<gray>, <white>", npcs));

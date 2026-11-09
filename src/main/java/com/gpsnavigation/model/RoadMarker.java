@@ -22,7 +22,6 @@ public final class RoadMarker {
     private final int x;
     private final int y;
     private final int z;
-    private MarkerType type = MarkerType.ROAD;
     private final Set<UUID> neighbors = new LinkedHashSet<>();
     private final Map<String, Object> settings = new LinkedHashMap<>();
 
@@ -48,8 +47,6 @@ public final class RoadMarker {
     public int x() { return x; }
     public int y() { return y; }
     public int z() { return z; }
-    public MarkerType type() { return type; }
-    public void type(MarkerType value) { this.type = value; }
     public Set<UUID> neighbors() { return neighbors; }
     public Map<String, Object> settings() { return settings; }
 
