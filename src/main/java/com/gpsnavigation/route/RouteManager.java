@@ -71,8 +71,7 @@ public final class RouteManager {
         }
         routes.put(player.getUniqueId(), route);
         Msg.send(player, "<green>Маршрут к <white>" + Msg.esc(npc.displayName()) + "</white> построен: <yellow>"
-                + Math.round(route.totalLength()) + " м</yellow>, маркеров: <yellow>" + route.markers.size()
-                + "</yellow>. <gray>Следуйте за указателями.");
+                + Math.round(route.totalLength() - route.startOffset) + " м</yellow>. <gray>Следуйте за указателями.");
         tickRoute(player, route);
         return true;
     }
@@ -159,9 +158,11 @@ public final class RouteManager {
         }
         roadLeg(terrain, pts, new Vector(npc.x(), npc.y(), npc.z()));
         releasePointers(route);
+        double tail = prependTail(terrain, pts, plugin.settings().pointerSpacing + 1);
         route.markers = path;
         route.setPoints(pts);
-        route.progress = 0;
+        route.startOffset = tail;
+        route.progress = tail;
         route.lastRecalc = System.currentTimeMillis();
         route.needsRecalc = false;
         route.lastPosition = null;
@@ -188,6 +189,46 @@ public final class RouteManager {
                 plugin.network(), plugin.zones(), route.mapId, route.world,
                 loc.getX(), loc.getY() + 0.5, loc.getZ(), s.startSearchRadius, s.offroadPenalty,
                 m -> canSee(player, m) ? 1.0 : 1.5, startY, null).find(goal);
+    }
+
+    /**
+     * Продлевает маршрут назад от игрока на length блоков — по линии, обратной направлению первых блоков пути,
+     * с прилипанием к земле. Так за спиной всегда есть узлы. Возвращает фактическую длину хвоста (0 — не продлён).
+     */
+    private static double prependTail(Terrain t, List<Vector> pts, double length) {
+        if (pts.size() < 2) return 0;
+        Vector start = pts.get(0);
+        Vector ahead = null;
+        for (Vector p : pts) {
+            double dx = p.getX() - start.getX(), dz = p.getZ() - start.getZ();
+            if (dx * dx + dz * dz >= 4) {
+                ahead = p;
+                break;
+            }
+        }
+        if (ahead == null) ahead = pts.get(pts.size() - 1);
+        double dx = start.getX() - ahead.getX(), dz = start.getZ() - ahead.getZ();
+        double len = Math.hypot(dx, dz);
+        if (len < 0.5) return 0;
+        dx /= len;
+        dz /= len;
+        List<Vector> tail = new ArrayList<>();
+        double y = start.getY();
+        int steps = (int) Math.ceil(length);
+        for (int i = 1; i <= steps; i++) {
+            double x = start.getX() + dx * i, z = start.getZ() + dz * i;
+            double ny = t.ground(x, z, y);
+            if (!Double.isNaN(ny) && Math.abs(ny - y) <= Terrain.STEP_DOWN) y = ny;
+            tail.add(new Vector(x, y, z));
+        }
+        java.util.Collections.reverse(tail);
+        List<Vector> all = new ArrayList<>(tail);
+        all.addAll(pts);
+        pts.clear();
+        pts.addAll(all);
+        double d = 0;
+        for (int i = 1; i <= tail.size(); i++) d += pts.get(i).distance(pts.get(i - 1));
+        return d;
     }
 
     /** Сколько столбцов блоков можно прочитать при проверке проходимости в A* и при прорисовке точек. */
@@ -318,7 +359,7 @@ public final class RouteManager {
             r.lastPosition = pos;
             if (pr[1] > s.recalcDistance && System.currentTimeMillis() - r.lastRecalc >= s.recalcCooldownMs) {
                 if (!recalc(player, r)) return;
-                r.progress = 0;
+                r.progress = r.startOffset;
                 r.lastPosition = pos;
             }
         }
@@ -333,8 +374,12 @@ public final class RouteManager {
         World world = player.getWorld();
         double sp = s.pointerSpacing;
         double total = r.totalLength();
-        int kStart = (int) Math.floor(r.progress / sp) + 1;
-        int kEnd = (int) Math.floor(Math.min(r.progress + s.pointerMaxDistance, total) / sp);
+        // Окно указателей: один — за спиной игрока (последний пройденный узел), дальше — вперёд по маршруту.
+        // С дальнего конца убран один, чтобы общее число не выросло; у самого NPC указатель не ставится
+        // (там своя подсветка цели).
+        int kStart = Math.max(0, (int) Math.floor(r.progress / sp));
+        int kEnd = Math.min((int) Math.floor((r.progress + s.pointerMaxDistance) / sp) - 1,
+                (int) Math.floor(total / sp) - 1);
 
         Iterator<Map.Entry<Integer, PointerHandle>> it = r.pointers.entrySet().iterator();
         while (it.hasNext()) {
@@ -348,7 +393,7 @@ public final class RouteManager {
             }
         }
         Terrain terrain = new Terrain(world, 4096);
-        for (int k = Math.max(1, kStart); k <= kEnd; k++) {
+        for (int k = kStart; k <= kEnd; k++) {
             if (r.pointers.containsKey(k)) continue;
             Vector v = r.pointAt(k * sp);
             if (v == null) continue;

@@ -1,12 +1,7 @@
-# Gradle
 .gradle/
 build/
 !gradle/wrapper/gradle-wrapper.jar
-
-# Сторонние jar для компиляции (DisplayLib и т.п.) — кладутся локально
 libs/*.jar
-
-# IDE
 .idea/
 *.iml
 *.ipr
@@ -17,8 +12,6 @@ out/
 .project
 .classpath
 bin/
-
-# Тестовый сервер, логи, мусор
 run/
 server/
 logs/
@@ -27,15 +20,9 @@ _to_delete/
 *.old
 *.broken
 *.tgz
-
-# ОС
 .DS_Store
 Thumbs.db
 desktop.ini
-
-# Рабочие скрипты (генератор вёрстки и т.п.) — не в репозитории
 tools/
-
-# Python
 __pycache__/
 *.pyc

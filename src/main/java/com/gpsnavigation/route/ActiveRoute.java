@@ -24,6 +24,12 @@ public final class ActiveRoute {
     int firstMarkerPoint = 1;
 
     /** Указатели по номеру позиции на маршруте (k * шаг): стоят на месте, пока игрок идёт. */
+    /**
+     * Длина «хвоста» за спиной игрока в начале маршрута: маршрут продлён назад по той же линии,
+     * чтобы узлы были и позади (игрок мог отвернуться). Прогресс после расчёта начинается с этого места.
+     */
+    double startOffset;
+
     final Map<Integer, PointerHandle> pointers = new HashMap<>();
     /** Где стоит каждый указатель (центр). */
     final Map<Integer, Vector> pointerPos = new HashMap<>();
